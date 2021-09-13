@@ -8,8 +8,8 @@
         <meta name="apple-mobile-web-app-capable" content="yes">
         <link rel="stylesheet" href="https://koukita.github.io/opendata/hodmap/css/leaflet.css">
         <link rel="stylesheet" href="https://koukita.github.io/opendata/hodmap/css/qgis2web.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"><!--現在地ボタンのアイコンを表示するのに必要-->
         <link rel="stylesheet" href="https://koukita.github.io/opendata/hodmap/css/L.Control.Locate.min.css"><!--現在地を表示するのに必要-->
-        <link rel="stylesheet" href="https://koukita.github.io/opendata/hodmap/css/L.Control.Locate.min.css.map"><!--現在地を表示するのに必要-->
 
         <style>
         #map {
@@ -231,6 +231,7 @@
 
                 }
                 // Locate
+                //参考にしたサイト：https://kita-note.com/leaflet-plugin-locatecontrol
                 var option = {
                 position: 'topright',
                 strings: {
