@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="https://koukita.github.io/opendata/hodmap/css/leaflet.css">
+        <link rel="stylesheet" href="https://koukita.github.io/opendata/hodmap/css/qgis2web.css">
+        <link rel="stylesheet" href="https://koukita.github.io/opendata/hodmap/css/L.Control.Locate.min.css"><!--現在地を表示するのに必要-->
+        <link rel="stylesheet" href="https://koukita.github.io/opendata/hodmap/css/L.Control.Locate.min.css.map"><!--現在地を表示するのに必要-->
+
+        <style>
+        #map {
+            width: 95%;
+            height: 550px;
+            border: 1px solid #000000;
+        }
+        </style>
+    </head>
+    <body>
+        <div id="map"></div><!-- 地図表示エリア -->
+
+        <script src="https://koukita.github.io/opendata/hodmap/js/leaflet.js"></script>  <!--地図を表示するのに必要-->
+        <script src="https://koukita.github.io/opendata/hodmap/js/leaflet.rotatedMarker.js"></script>  <!--地図を表示するのに必要-->
+        <script src="https://koukita.github.io/opendata/hodmap/js/leaflet.pattern.js"></script>  <!--地図を表示するのに必要-->
+        <script src="https://koukita.github.io/opendata/hodmap/js/leaflet-hash.js"></script>  <!--地図を表示するのに必要-->
+        <script src="https://koukita.github.io/opendata/hodmap/js/jquery.min.js"></script> <!--$getJsonを実行するのに必要-->
+        <script type="text/JavaScript" src="https://koukita.github.io/websample/js/encoding.min.js"></script> <!--CSVの文字コード変更-->
+        <script src="https://koukita.github.io/opendata/hodmap/js/L.Control.Locate.min.js"></script>  <!--現在地を表示するのに必要-->
+
+        <script>
+            //データCSVのURL
+            var csvUrl = "https://koukita.github.io/hkd_araiguma2/data/araiguma.csv"
+            
+            //CSVファイルのリンクを更新
+            //document.getElementById('csv_url').innerHTML ='<a href=' + csvUrl + '>CSVファイルのダウンロード</a>'
+
+            //CSVを読み込んで、文字コードを変換後Jsonに変換＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+            var req = new XMLHttpRequest(); // HTTPでファイルを読み込むためのXMLHttpRrequestオブジェクトを生成
+            req.open("get", csvUrl, true); // アクセスするファイルを指定
+            req.responseType = 'arraybuffer'; //CSVをバイナリデータとして読み込み（重要）
+            req.send(null); // HTTPリクエストの発行
+            var result = []; // 最終的な二次元配列を入れるための配列
+
+            // 非同期CSVのレスポンスが返ってきたら地図作成処理を行う
+            //文字コードを変換後にJsonに変換
+            req.onload = function(){
+                //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+                //　　　CSVの文字コードをUNICODEに変換　　　　　　　＝＝
+                //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+                //UNICODEに文字コード変換したCSVを作成
+                var sjisStr = req.response; //SJISのテキストデータ
+                if (sjisStr){
+                    var sjisArray = new Uint8Array(sjisStr)  //文字コードで配列を作成
+                    var unicodeArray = Encoding.convert(sjisArray,{ //encoding.jsでSJISをUNIDODEに変換
+                        to: 'UNICODE',
+                        from: 'AUTO'  //文字コードの判定は自動
+                    });
+                    var unicodeStr = Encoding.codeToString(unicodeArray); //UNICODEのテキストデータ
+                    unicodeStr = unicodeStr.replace(/\r/g, '') //Excel特有の改行コード「\r」を削除
+                }
+                var tmp = unicodeStr.split("\n"); // 改行を区切り文字として行を要素とした配列を生成
+
+
+                //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+                //　Leflet.jsで地図を描画する　　　　　　　　　　　　＝＝
+                //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+
+                // カラム名の取得に使うために配列を作成する
+                result = tmp[0].split(',');
+                //console.log(result);
+
+                //UNICODEテキストからJSONを作成
+                var csv2jsonObj = csvToJson(unicodeStr, { header : 1, columnName : result});
+                //console.log(csv2jsonObj);
+
+
+                //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+                //　地図関係のプログラム　　　　　　　　　　　　＝＝
+                //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+
+                // //ハイライトの設定（マウスオーバー時に黄色にする）
+                // var highlightLayer;
+                // function highlightFeature(e) {
+                //     highlightLayer = e.target;
+
+                //     if (e.target.feature.geometry.type === 'LineString') {  //ジオメトリがラインかポリゴンか確認
+                //         highlightLayer.setStyle({       //ラインの場合の設定
+                //         color: "#e2ff00",   //黄色
+                //         });
+                //     } else {
+                //         highlightLayer.setStyle({       //ポリゴンの場合の設定
+                //         fillColor: "#e2ff00",   //黄色
+                //         fillOpacity: 0.7
+                //         });
+                //     }
+                //     //マウスオーバー時に市町村名を表示
+                //     //document.getElementById('od_city').innerHTML ='<font size="5" color="blue">' + e.target.feature.properties['市町村名'] + '</font>'
+                // }
+          
+                //================================================
+                //　　地図の表示
+                //================================================
+                //地理院地図
+                var m_Chiriin = new L.tileLayer('http://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+                    attribution: "<a href='http://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html' target='_blank'>国土地理院</a>",
+                    opacity: 0.5,
+                    attribution: '地理院地図' });
+
+                var map = L.map('map', {
+                    zoomControl:true, maxZoom:15, minZoom:7,  //ズームコントロール、ズームレベル
+                    center:[43.517,142.614],                 //初期表示の中心位置
+                    zoom: 7,                                //初期表示のズームレベル
+                    layers: [m_Chiriin],                                  
+                });
+                // //背景レイヤの作成
+                // var Map_BaseLayer = {
+                //     "地理院地図": m_Chiriin, };
+                
+                var hash = new L.Hash(map);                  //著作権表示
+                map.attributionControl.setPrefix(' <a href="http://leafletjs.com" title="A JS library for interactive maps">Leaflet</a>');
+                var bounds_group = new L.featureGroup([]);
+                function setBounds() {
+                }
+                function popHokkaidoMap(feature, layer) {
+                    //マウスアウト、マウスオーバー時の動作
+                    layer.on({
+                        mouseout: function(e) {
+                            for (i in e.target._eventParents) {
+                                e.target._eventParents[i].resetStyle(e.target);
+                            }
+                        },
+                        //mouseover: highlightFeature,
+                    });
+                    //ポップアップテーブルを作成する
+                    var popupContent = '<table width="200">\
+                            <col width="100">\
+                            <col width="100">\
+                            <tr>\
+                                <th scope="row">メッシュ名</th>\
+                                <td>' + (feature.properties['Name'] !== null ? String(feature.properties['Name']) : '') + '</td>\
+                            </tr>\
+                            <tr>\
+                                <th scope="row">メス</th>\
+                                <td>' + (feature.properties['female'] !== null ? String(feature.properties['female']) : '') + '</td>\
+                            </tr>\
+                            <tr>\
+                                <th scope="row">オス</th>\
+                                <td>' + (feature.properties['male'] !== null ? String(feature.properties['male']) : '') + '</td>\
+                            </tr>\
+                            <tr>\
+                                <th scope="row">合計頭数</th>\
+                                <td>' + (feature.properties['total'] !== null ? String(feature.properties['total']) : '') + '</td>\
+                            </tr>\
+                        </table>';
+                    layer.bindPopup(popupContent, {maxHeight: 400});
+                }
+
+                function style_hokkaido_sityouson_1_0(feature) {
+                    //GeoJsonとCSVを結合し、新しいGeojsonを作成
+                    feature = joinCSV(feature,csv2jsonObj)
+
+                    if(String(feature.properties['total'])>=101){
+                        return {
+                            pane: 'paneHokkaidoMap',        //マップペインを設定
+                            opacity: 1,                     //透明度
+                            color: 'rgba(0,0,0,1.0)',       //線の色
+                            dashArray: '',                  //線のスタイル：実線
+                            lineCap: 'butt',                //ラインの終わりの形状：フラット
+                            lineJoin: 'miter',              //継ぎ目スタイル：面取りしない
+                            weight: 1.0,                    //線の太さ
+                            fill: true,                     //塗りつぶしする
+                            fillOpacity: 0.5,               //塗りつぶし透明度
+                            fillColor: 'rgba(255,0,255,1.0)'  //塗りつぶし色：ピンク
+                        }
+                    }else if(String(feature.properties['total'])>=51){
+                        return {
+                            pane: 'paneHokkaidoMap',        //マップペインを設定
+                            opacity: 1,                     //透明度
+                            color: 'rgba(0,0,0,1.0)',       //線の色
+                            dashArray: '',                  //線のスタイル：実線
+                            lineCap: 'butt',                //ラインの終わりの形状：フラット
+                            lineJoin: 'miter',              //継ぎ目スタイル：面取りしない
+                            weight: 1.0,                    //線の太さ
+                            fill: true,                     //塗りつぶしする
+                            fillOpacity: 0.5,               //塗りつぶし透明度
+                            fillColor: 'rgba(85,0,255,1.0)'  //塗りつぶし色：紫
+                        }
+                    }else if(String(feature.properties['total'])>=21){
+                        return {
+                            pane: 'paneHokkaidoMap',        //マップペインを設定
+                            opacity: 1,                     //透明度
+                            color: 'rgba(0,0,0,1.0)',       //線の色
+                            dashArray: '',                  //線のスタイル：実線
+                            lineCap: 'butt',                //ラインの終わりの形状：フラット
+                            lineJoin: 'miter',              //継ぎ目スタイル：面取りしない
+                            weight: 1.0,                    //線の太さ
+                            fill: true,                     //塗りつぶしする
+                            fillOpacity: 0.5,               //塗りつぶし透明度
+                            fillColor: 'rgba(0,255,255,1.0)'  //塗りつぶし色：水色
+                        }
+                    }else if(String(feature.properties['total'])>=1){
+                        return {
+                            pane: 'paneHokkaidoMap',        //マップペインを設定
+                            opacity: 1,                     //透明度
+                            color: 'rgba(0,0,0,1.0)',       //線の色
+                            dashArray: '',                  //線のスタイル：実線
+                            lineCap: 'butt',                //ラインの終わりの形状：フラット
+                            lineJoin: 'miter',              //継ぎ目スタイル：面取りしない
+                            weight: 1.0,                    //線の太さ
+                            fill: true,                     //塗りつぶしする
+                            fillOpacity: 0.5,               //塗りつぶし透明度
+                            fillColor: 'rgba(255,170,0,1.0)'  //塗りつぶし色：オレンジ
+                        }
+                    }else{
+                        return {
+                            pane: 'paneHokkaidoMap',        //マップペインを設定
+                            opacity: 1,                     //透明度
+                            color: 'rgba(0,0,0,1.0)',       //線の色
+                            dashArray: '',                  //線のスタイル：実線
+                            lineCap: 'butt',                //ラインの終わりの形状：フラット
+                            lineJoin: 'miter',              //継ぎ目スタイル：面取りしない
+                            weight: 1.0,                    //線の太さ
+                            fill: true,                     //塗りつぶしする
+                            fillOpacity: 0,               //塗りつぶし透明度
+                            fillColor: 'rgba(255,255,255,1.0)'  //塗りつぶし色：白
+                        }
+                    }
+
+                }
+                // Locate
+                var option = {
+                position: 'topright',
+                strings: {
+                    title: "現在地を表示",
+                    popup: "いまここ"
+                },
+                locateOptions: {
+                    maxZoom: 15
+                }
+                }
+        
+                var lc = L.control.locate(option).addTo(map);
+        
+                // マップ表示時に現在地を取得
+                //lc.start();        
+
+                //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+                //　　GeojsonとCSVの結合を行う関数
+                //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+                var joinCSV = function(dataMap, dataCSV) {
+                    //結合データのJson（元CSV）を列「コード」でフィルタする
+                    var jCSV = dataCSV.filter(function(item,index){
+                        if (item.Name == dataMap.properties.Name) return true;   //結合するキーフィールドをここで指定！
+                    });
+                    if(jCSV[0] == undefined){
+                    //CSVにデータがない場合はデータ追加しない
+                    }else{
+                        var joinCsvKeys =Object.keys(jCSV[0]) //結合するCSVのデータを配列で取得
+                        //CSVデータをJsonに結合
+                        for ( var i = 0; i < joinCsvKeys.length ; i++ ){
+                            dataMap.properties[ joinCsvKeys[i] ] = jCSV[0][ joinCsvKeys[i] ]
+                        }
+                    }
+                    //console.log(dataMap)
+                    return dataMap;
+                };  //＝＝CSV結合はここまで＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+
+                map.createPane('paneHokkaidoMap');                                  //ペインの作成
+                map.getPane('paneHokkaidoMap').style.zIndex = 400;                  //ペインの表示順序
+                map.getPane('paneHokkaidoMap').style['mix-blend-mode'] = 'normal';  //ペインの混合モード
+           
+           
+                //geojsonファイルを読み込んでレイヤに表示
+                $.getJSON("https://koukita.github.io/hkd_araiguma2/data/5km_mesh.geojson",function(json){
+                    var layerHokkaidoMap = new L.geoJson(json, {
+                        attribution: '',
+                        pane: 'paneHokkaidoMap',
+                        onEachFeature: popHokkaidoMap,
+                        style: style_hokkaido_sityouson_1_0,
+                    });
+                    bounds_group.addLayer(layerHokkaidoMap);
+                    map.addLayer(layerHokkaidoMap);
+                    setBounds();
+                });
+                //＝＝地図表示のプログラムはここまで＝＝＝＝＝＝＝＝＝＝＝＝＝
+    
+
+        }
+        
+
+        //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+        //　　CSVをJsonに変換する関数
+        //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+        var csvToJson = function(csvStr, userOptions) {
+            if (typeof csvStr !== 'string') return null;
+            //options
+            //header : 除外するヘッダーの行番号（数値）
+            //columnName : カラム名（配列）
+            //ignoreBlankLine : 空白行の除外（ブーリアン）
+            var options = { header : 0, columnName : [], ignoreBlankLine : true };
+        
+            if (userOptions) {
+                if (userOptions.header) options.header = userOptions.header;
+                if (userOptions.columnName) options.columnName = userOptions.columnName;
+            }
+        
+            var rows = csvStr.split('\n');
+            var json = [], line = [], row = '', data = {};
+            var i, len, j, len2;
+        
+            for (i = 0, len = rows.length; i < len; i++) {
+                if ((i + 1) <= options.header) continue;
+                if (options.ignoreBlankLine && rows[i] === '') continue;
+        
+                line = rows[i].split(',');
+        
+                if (options.columnName.length > 0) {
+                    data = {};
+                    for (j = 0, len2 = options.columnName.length; j < len2; j++) {
+                        if (typeof line[j] !== 'undefined') {
+                            row = line[j];
+                            row = row.replace(/^"(.+)?"$/, '$1');
+                        } else {
+                            row = null;
+                        }
+        
+                        data[options.columnName[j]] = row;
+                    }
+                    json.push(data);
+                } else {
+                    json.push(line);
+                }
+            }
+        
+            return json;
+        };
+        </script>
+    </body>
+</html>
