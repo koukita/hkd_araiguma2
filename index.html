@@ -22,6 +22,7 @@
     </head>
     <body>
         北海道のアライグマ捕獲マップ<br>
+        ※このデータはテストデータのため、実際のものではありません<br>
         <div id="map"></div><!-- 地図表示エリア -->
 
         <script src="https://koukita.github.io/opendata/hodmap/js/leaflet.js"></script>  <!--地図を表示するのに必要-->
@@ -112,7 +113,7 @@
                     attribution: '地理院地図' });
 
                 var map = L.map('map', {
-                    zoomControl:true, maxZoom:15, minZoom:7,  //ズームコントロール、ズームレベル
+                    zoomControl:true, maxZoom:18, minZoom:7,  //ズームコントロール、ズームレベル
                     center:[43.517,142.614],                 //初期表示の中心位置
                     zoom: 7,                                //初期表示のズームレベル
                     layers: [m_Chiriin],                                  
