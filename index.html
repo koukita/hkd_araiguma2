@@ -6,6 +6,7 @@
         <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
+        <title>北海道アライグマ捕獲マップ</title>
         <link rel="stylesheet" href="https://koukita.github.io/opendata/hodmap/css/leaflet.css">
         <link rel="stylesheet" href="https://koukita.github.io/opendata/hodmap/css/qgis2web.css">
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"><!--現在地ボタンのアイコンを表示するのに必要-->
@@ -20,6 +21,7 @@
         </style>
     </head>
     <body>
+        北海道のアライグマ捕獲マップ<br>
         <div id="map"></div><!-- 地図表示エリア -->
 
         <script src="https://koukita.github.io/opendata/hodmap/js/leaflet.js"></script>  <!--地図を表示するのに必要-->
@@ -236,7 +238,7 @@
                 position: 'topright',
                 strings: {
                     title: "現在地を表示",
-                    popup: "いまここ"
+                    popup: "現在地"
                 },
                 locateOptions: {
                     maxZoom: 13
